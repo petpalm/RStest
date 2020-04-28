@@ -364,7 +364,6 @@ summary {
 
 <h1 class="title toc-ignore">Prediction Assignment Writeup</h1>
 <h4 class="author">Peter Palmer.</h4>
-<h4 class="date">4/26/2020</h4>
 
 </div>
 
