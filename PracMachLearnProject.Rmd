@@ -1,0 +1,124 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Peter Palmer."
+date: "4/26/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Synopsis 
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the [website]( http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).   
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+### Data
+
+The training data for this project are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv), and is a data frame made up of 19622 observations of 160 variables. The test data are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv), and is a data frame made up of 20 observations of  160 variables. The data for this project come from the [source](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har), and if you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+In the data set, participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different ways:    
+
+- exactly according to the specification (Class A)    
+- throwing the elbows to the front (Class B)     
+- lifting the dumbbell only halfway (Class C)     
+- lowering the dumbbell only halfway (Class D)     
+- throwing the hips to the front (Class E)
+
+### Approach 
+
+In the project, class A is the correct execution of the exercise, and the other classes represent common mistakes people make when doing the exercise. Prediction evaluations are based on maximizing the accuracy and minimizing the out-of-sample error. The data will be transformed by deleting some variables, and all remaining variables will be used when building the model. We will use the support vector machines (svm) algorithm to learn from the training data then use it to make predictions on the test data. We will note the accuracy of the model as this tells the correct predictions as a percentage of the total predictions.  
+
+### Cross-validation
+
+Cross-validation will be performed by subsampling our training data set randomly without replacement into two subsamples. We will partition the training data as 70% training, the model will be fitted on this data, to 30% testing, the model will be used to make predictions on this. The model will then be used on the original testing data that  was provided. 
+
+### Data Processing 
+
+Install packages and load the libraries that will be used. 
+```{r}
+library(caret)
+library(ggplot2)
+library(lattice)
+library(e1071)
+set.seed(150)
+```
+
+
+Assign each url to a handle; download the files in the working directory; and name the files. 
+
+```{r}
+trainUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(trainUrl, destfile = "pml-training.csv", method ="curl")
+
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(testUrl, destfile = "pml-testing.csv", method ="curl")
+```
+
+Load the training set and testing set data into R and do some transformations. 
+```{r}
+traindf <- read.csv("pml-training.csv") 
+testdf <- read.csv("pml-testing.csv")
+```
+
+Transform the original train and test data by deleting any column which has only NAs, and delete the first seven columns because we do not need this information. 
+
+```{r}
+traindf <- traindf[ ,colSums(is.na(traindf)) == 0]
+testdf <-testdf[ ,colSums(is.na(testdf)) == 0]
+```
+
+```{r}
+traindf   <-traindf[ ,-c(1:7)]
+testdf <-testdf[ ,-c(1:7)]
+```
+
+### Data Visualization
+
+The outcome variable, classe, has five levels, and we use ggplot to view a bar graph of the variable.  
+```{r}
+ggplot(traindf, aes(classe)) + geom_bar() 
+```
+
+Use the createDataPartition() function to partition the training data in a 7:3 train/test split. 
+```{r}
+traindfNew <- createDataPartition(y=traindf$classe, p=0.70, list=FALSE)
+trainset <- traindf[traindfNew, ] 
+testset <- traindf[-traindfNew, ]
+```
+
+### Support Vector Machines Algorithm 
+In this section, we will create the model by applying it to the 70% of the training data that was assigned for training the model, use the classifier to make predictions on the 30% of the traing data that was assigned for testing, and Use the classifier to make predictions on the data that was originally provided as testing data.    
+
+
+Fit the SVM to the 70% of the training data that was assigned for training the model. 
+```{r}
+classifier = svm(formula = classe ~., 
+                 data = trainset, 
+                 type = 'C-classification', 
+                 kernel = 'linear') 
+```
+
+```{r}
+classifier
+```
+
+Use the classifier to make predictions on the 30% of the traing data that was assigned for testing.  
+```{r}
+svmpred = predict(classifier, newdata = testset) 
+```
+
+
+```{r}
+confusionMatrix(svmpred, testset$classe)
+```
+
+### Conclusion 
+
+The accuracy of the model, on the 30% of the training data that was provided for training, is 77.88%, that is, the percentage of all the predictions that were correctly made is 77.88%. 
+
+
